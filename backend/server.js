@@ -28,7 +28,7 @@ app.post("/get-transcript", async (req, res) => {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
 const schema = {
-    description: "A list a 10 of multiple-choice questions generated from the given text.",
+    description: "A list a 10 of multiple-choice questions generated from the given text also if you did't get the correct context of the video and question so generate question on the similer topics which is tought in the video.",
     type: "array",
     minItems: 10,
     maxItems: 10,
