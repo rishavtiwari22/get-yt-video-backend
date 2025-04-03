@@ -83,3 +83,7 @@ async function generateQuestions(transcript) {
 
 
 app.listen(3001, () => console.log("Server running on http://localhost:3001"));
+
+app.get("/", (req, res) => {
+    res.send("Hello World!");
+});
