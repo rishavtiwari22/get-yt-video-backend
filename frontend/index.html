@@ -1,30 +1,28 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
   <title>JavaScript Quiz App</title>
   <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-
 <body>
   <div class="container">
-    <div class="link">
+    <div class="link card">
       <h2>Enter YouTube URL</h2>
-      <input type="text" id="youtube-url" placeholder="Enter YouTube URL" />
-      <button id="btn">Get Questions</button>
+      <input type="text" id="youtube-url" placeholder="Paste YouTube URL here" />
+      <button id="btn" class="btn-3d">Get Questions</button>
     </div>
-    <br>
-    <br>
-    <div class="quiz-container">
+    <div class="quiz-container card">
       <h1>Quiz App</h1>
-      <div id="quiz"></div>
+      <div id="quiz" class="quiz-content"></div>
       <div id="result" class="result" style="display: none;"></div>
-      <button id="submit" class="button">Submit</button>
-      <button id="retry" class="button hide">Retry</button>
-      <button id="showAnswer" class="button hide">Show Wrong Answer</button>
+      <div class="button-group">
+        <button id="submit" class="btn-3d">Submit</button>
+        <button id="retry" class="btn-3d hide">Retry</button>
+        <button id="showAnswer" class="btn-3d hide">Show Answers</button>
+      </div>
     </div>
   </div>
-  <script src="code.js"></script>
+  <script src="script.js"></script>
 </body>
-
 </html>
