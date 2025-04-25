@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             console.log(`Sending request for video ID: ${videoId}`);
             // const baseUrl = process.env.BASE_URL;
-            const baseUrl = "https://get-yt-video-backend.vercel.app/";
+            const baseUrl = "https://get-yt-video-backend.vercel.app";
             // Use relative path for API endpoint for production compatibility
             const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
                 ? "http://localhost:3000/api/get-transcript" 
