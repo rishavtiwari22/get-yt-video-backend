@@ -14,7 +14,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 const schema = {
     description: "A list of multiple-choice questions generated from the given text. Each question must be complete, clear, and based only on information that is explicitly provided in the transcript.",
     type: "array",
-    minItems: 5,
+    minItems: 10,
     maxItems: 10,
     items: {
         type: "object",

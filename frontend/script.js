@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             showToast("Generating questions...", "info");
-            const response = await fetch("https://get-yt-question.vercel.app/get-transcript", {
+            const response = await fetch("http://localhost:3001/get-transcript", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ videoId }),
