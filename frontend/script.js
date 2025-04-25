@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             if (data.error && data.error === "Transcripts not available") {
                 showPopup("Transcript Not Available", 
-                    "This video doesn't have captions or transcripts available. Please try another video.", 
+                    "This video doesn't have captions or transcripts available. You can try videos that have closed captions enabled.", 
                     "error");
                 resetButtonState();
                 return;
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             if (data.error && data.error.includes("Not enough reliable information")) {
                 showPopup("Content Issue", 
-                    "We couldn't generate good quality questions from this video. This could be because the content is too short, lacks educational material, or the transcript quality is poor. Please try a different educational video.", 
+                    "We couldn't generate enough questions from this video. Please try an educational video with more detailed content or clearly explained concepts.", 
                     "error");
                 resetButtonState();
                 return;
@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             if (!data || data.error || !Array.isArray(data.result) || data.result.length === 0) {
                 showPopup("Error", 
-                    "Failed to generate questions. This could be due to an issue with the video content or our system. Please try another educational video.", 
+                    "Failed to generate questions. Please try another educational video with clearer content.", 
                     "error");
                 resetButtonState();
                 return;
@@ -76,23 +76,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
             quizData = data.result;
             
-            // Extra validation on frontend side to catch any incomplete questions
-            const incompleteQuestions = quizData.filter(q => 
-                q.question.includes("given expression") || 
-                q.question.includes("mentioned") ||
-                q.question.length < 30
+            // Less restrictive validation - only filter out obviously problematic questions
+            const problematicQuestions = quizData.filter(q => 
+                q.question.length < 15 || 
+                !q.options || 
+                q.options.length !== 4 ||
+                !q.options.includes(q.correctAnswer)
             );
             
-            if (incompleteQuestions.length > 0) {
-                showPopup("Quality Issue", 
-                    "Some questions may not be complete or clear enough. Please try another video with more structured educational content.", 
-                    "error");
-                resetButtonState();
-                return;
+            if (problematicQuestions.length > 0) {
+                // Remove problematic questions rather than failing
+                quizData = quizData.filter(q => !problematicQuestions.includes(q));
+                
+                if (quizData.length < 3) {
+                    showPopup("Quality Issue", 
+                        "We couldn't generate enough good quality questions from this video. Please try another educational video.", 
+                        "error");
+                    resetButtonState();
+                    return;
+                }
+                
+                // Just show a warning but proceed with the quiz
+                showToast("Some questions were filtered out due to quality issues", "warning");
             }
             
             startQuiz();
-            showToast(`Quiz generated successfully with ${quizData.length} questions!`, "success");
+            showToast(`Quiz generated with ${quizData.length} questions!`, "success");
             resetButtonState();
         } catch (error) {
             console.error("Fetch Error:", error);
@@ -107,6 +116,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function extractVideoId(url) {
+        // More comprehensive video ID extraction
+        const patterns = [
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/i,     // Standard YouTube URL
+            /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^?]+)/i,                 // Shortened URL
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^?]+)/i,        // Embed URL
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^?]+)/i,            // Old embed URL
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/user\/[^\/]+\/([^?]+)/i, // User URL
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/[^\/]+\/([^?]+)/i,       // Channel URL
+        ];
+
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                return match[1].split('&')[0]; // Remove any additional parameters
+            }
+        }
+
+        // Fallback to the original method
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
         return (match && match[2].length === 11) ? match[2] : null;
@@ -276,7 +303,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function isValidYouTubeUrl(url) {
-        const regExp = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+        // More comprehensive URL validation
+        const regExp = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)\/(watch\?v=|embed\/|v\/|shorts\/|user\/\S+\/|channel\/|c\/|playlist\?|watch\?.+&v=)([^#&?]*).*/;
         return regExp.test(url);
     }
 
