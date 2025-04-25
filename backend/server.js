@@ -133,7 +133,7 @@ async function generateQuestions(transcript) {
     }
 }
 
-app.post("/get-transcript", async (req, res) => {
+app.post("/", async (req, res) => {
     const { videoId } = req.body;
     if (!videoId) {
         return res.status(400).json({ error: "Video ID is required" });
@@ -159,6 +159,6 @@ app.post("/get-transcript", async (req, res) => {
 
 app.listen(3001, () => console.log("Server running on http://localhost:3001"));
 
-app.get("/", (req, res) => {
+app.get("/get-transcript", (req, res) => {
     res.send("Hello World!");
 });
