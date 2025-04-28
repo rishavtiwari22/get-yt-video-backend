@@ -4,8 +4,8 @@
   "description": "Backend for Bootcamp AI using Express and Google Generative AI.",
   "main": "api/server.js",
   "scripts": {
-    "start": "node api/server.js",
-    "dev": "nodemon api/server.js"
+    "start": "node api/app.js",
+    "dev": "nodemon api/app.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
