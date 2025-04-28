@@ -2,7 +2,7 @@
   "name": "bootcamp-ai-backend",
   "version": "1.0.0",
   "description": "Backend for Bootcamp AI using Express and Google Generative AI.",
-  "main": "api/server.js",
+  "main": "api/app.js",
   "scripts": {
     "start": "node api/app.js",
     "dev": "nodemon api/app.js"
