@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
+import axios from "axios";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getYouTubeTranscript } from "./transcript.js";
+// import { getYouTubeTranscript } from "./transcript.js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -134,8 +135,7 @@ async function generateQuestions(transcript) {
 }
 
 // Serverless function handler for Vercel
-app.post('/api/get-transcript' , async (req, res) => {
-    // Set CORS headers
+app.post('/api/get-transcript', async (req, res) => {
     const { videoId } = req.body;
     if (!videoId) {
         console.log("Error: No video ID provided");
@@ -144,8 +144,16 @@ app.post('/api/get-transcript' , async (req, res) => {
     
     try {
         console.log(`Processing request for video ID: ${videoId}`);
-        const transcript = await getYouTubeTranscript(videoId);
+        const transcriptResult = await getYouTubeTranscript(videoId);
 
+        // Check if transcript result contains an error
+        if (typeof transcriptResult === 'object' && transcriptResult.error) {
+            console.log("Transcript error:", transcriptResult.error);
+            return res.status(400).json({ error: transcriptResult.error });
+        }
+
+        // At this point we know we have a valid transcript string
+        const transcript = transcriptResult;
         console.log(`Transcript fetched successfully (${transcript.length} characters). Generating questions...`);
         
         const result = await generateQuestions(transcript);
@@ -161,11 +169,142 @@ app.post('/api/get-transcript' , async (req, res) => {
         
         res.status(500).json({ error: "Failed to generate questions. Please try another video." });
     }
-})
+});
+
+async function getYouTubeTranscript(videoId) {
+    try {
+        console.log("Fetching transcript for video ID:", videoId);
+        
+        // Try fetching captions directly from timedtext API first
+        const directUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en`;
+        try {
+            const directResponse = await axios.get(directUrl);
+            if (directResponse.data && directResponse.data.includes('<text')) {
+                return processTranscript(directResponse.data);
+            }
+        } catch (directError) {
+            console.log("Direct transcript fetch failed, trying alternative method...");
+        }
+
+        // Fallback to page HTML method
+        const response = await axios.get(`https://www.youtube.com/watch?v=${videoId}`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+        const html = response.data;
+        
+        // Extract captions data
+        const patterns = [
+            /"captions":({[^}]+})/,
+            /"captionTracks":\[(.*?)\]/,
+            /\{"playerCaptionsTracklistRenderer":\{.*?\}\}/
+        ];
+
+        let captionsMatch = null;
+        for (const pattern of patterns) {
+            const match = html.match(pattern);
+            if (match && match[1]) {
+                captionsMatch = match[1];
+                break;
+            }
+        }
+
+        if (!captionsMatch) {
+            console.error("No caption data found in response");
+            return { error: "Transcripts not available" };
+        }
+
+        // Parse caption tracks
+        let captionTracks = [];
+        try {
+            const captionsData = JSON.parse(captionsMatch);
+            if (captionsData.playerCaptionsTracklistRenderer) {
+                captionTracks = captionsData.playerCaptionsTracklistRenderer.captionTracks;
+            } else if (Array.isArray(captionsData)) {
+                captionTracks = captionsData;
+            }
+        } catch (e) {
+            // Try regex extraction as last resort
+            const baseUrlRegex = /"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/g;
+            const matches = [...captionsMatch.matchAll(baseUrlRegex)];
+            captionTracks = matches.map(match => ({ baseUrl: match[1].replace(/\\u0026/g, '&') }));
+        }
+
+        if (!captionTracks || captionTracks.length === 0) {
+            console.error("No caption tracks found");
+            return { error: "Transcripts not available" };
+        }
+
+        // Get English transcript or first available
+        const englishTrack = captionTracks.find(track => 
+            track.languageCode === 'en' || 
+            track.name?.simpleText?.toLowerCase().includes('english') ||
+            track.baseUrl?.includes('lang=en')
+        ) || captionTracks[0];
+
+        if (!englishTrack || !englishTrack.baseUrl) {
+            console.error("No valid transcript URL found");
+            return { error: "Transcripts not available" };
+        }
+
+        const transcriptResponse = await axios.get(englishTrack.baseUrl);
+        return processTranscript(transcriptResponse.data);
+
+    } catch (error) {
+        console.error("Error fetching transcript:", error.message);
+        return { error: "Failed to fetch transcript" };
+    }
+}
+
+function processTranscript(transcriptXml) {
+    try {
+        // Extract and clean transcript segments
+        const transcriptSegments = [...transcriptXml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)]
+            .map(match => {
+                let text = match[1]
+                    .replace(/&amp;#39;/g, "'")
+                    .replace(/&amp;quot;/g, '"')
+                    .replace(/&amp;/g, "&")
+                    .replace(/&#39;/g, "'")
+                    .replace(/&quot;/g, '"')
+                    .replace(/&lt;/g, "<")
+                    .replace(/&gt;/g, ">")
+                    .replace(/\n/g, " ")
+                    .trim();
+                
+                text = text.replace(/&[^;]+;/g, " ");
+                return text;
+            })
+            .filter(text => text.length > 0);
+
+        if (transcriptSegments.length === 0) {
+            console.error("No text segments found in transcript");
+            return { error: "No valid transcript content found" };
+        }
+
+        let transcript = transcriptSegments.join(" ");
+        transcript = transcript.replace(/([a-z])\s+([A-Z])/g, "$1. $2");
+        
+        // Validate transcript content
+        if (transcript.split(' ').length < 50) {
+            console.error("Transcript too short");
+            return { error: "Not enough content in transcript" };
+        }
+
+        console.log('Transcript retrieved successfully:', transcript.substring(0, 200) + '...');
+        return transcript;
+    } catch (error) {
+        console.error("Error processing transcript:", error.message);
+        return { error: "Failed to process transcript" };
+    }
+}
+
 const PORT = "3000";
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
 
 
 export default app;
