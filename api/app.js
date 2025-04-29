@@ -194,6 +194,8 @@ async function getYouTubeTranscript(videoId) {
         });
         const html = response.data;
         
+        console.log(html);
+
         // Extract captions data
         const patterns = [
             /"captions":({[^}]+})/,
@@ -209,7 +211,7 @@ async function getYouTubeTranscript(videoId) {
                 break;
             }
         }
-
+        
         if (!captionsMatch) {
             console.error("No caption data found in response");
             return { error: "Transcripts not available" };
