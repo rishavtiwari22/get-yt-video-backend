@@ -49,6 +49,7 @@ const schema = {
 };
 
 async function generateQuestions(transcript) {
+    console.log(transcript);
     try {
         // Clean transcript further to improve processing
         const cleanedTranscript = transcript
@@ -56,6 +57,7 @@ async function generateQuestions(transcript) {
             .replace(/(\w+)\s\1/g, '$1')        // Remove double repeated words
             .replace(/\s{2,}/g, ' ')           // Remove multiple spaces
             .trim();
+
         
         const model = genAI.getGenerativeModel({
             model: "gemini-1.5-pro",
@@ -144,6 +146,7 @@ app.post('/api/get-transcript', async (req, res) => {
     
     try {
         console.log(`Processing request for video ID: ${videoId}`);
+
         const transcriptResult = await getYouTubeTranscript(videoId);
 
         // Check if transcript result contains an error
@@ -154,6 +157,7 @@ app.post('/api/get-transcript', async (req, res) => {
 
         // At this point we know we have a valid transcript string
         const transcript = transcriptResult;
+
         console.log(`Transcript fetched successfully (${transcript.length} characters). Generating questions...`);
         
         const result = await generateQuestions(transcript);
